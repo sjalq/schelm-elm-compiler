@@ -7,3 +7,9 @@ cabal.sandbox.config
 .DS_Store
 *~
 travis.log
+
+# Local compiler release assembly; only commit via an explicit release policy.
+result/
+
+# Elm fixture build products.
+fixtures/**/elm-stuff/

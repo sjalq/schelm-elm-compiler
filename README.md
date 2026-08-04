@@ -20,3 +20,12 @@ For multiple versions, previous versions, and uninstallation, see the instructio
 If you are stuck, ask around on [the Elm slack channel][slack]. Folks are friendly and happy to help with questions!
 
 [slack]: https://elm-lang.org/community/slack
+
+## Schelm fork
+
+This repository is the source for the **unofficial Schelm compiler fork**, not
+an official Elm release. It deliberately reports Elm semantic version `0.19.2`
+for package-constraint and cache compatibility. That version string is not a
+claim of endorsement or binary identity. See [SCHELM.md](SCHELM.md) for the
+fork identity, exact source/toolchain pins, build procedure, and kernel
+boundary evidence.
