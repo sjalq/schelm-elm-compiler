@@ -1,0 +1,8 @@
+Schelm Elm compiler fork
+
+Based on the Elm compiler, official tag 0.19.2, commit
+48befde196cbcbdf459114e36c02b52c49b58050.
+
+Upstream copyright and BSD 3-Clause terms are retained in LICENSE. Modifications
+add private Schelm kernel-package authorization and related validation assets.
+This fork is not an official Elm release and is not endorsed by the Elm project.
