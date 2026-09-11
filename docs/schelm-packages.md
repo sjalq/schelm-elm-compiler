@@ -51,6 +51,9 @@ The tag is the published release. There is no required Schelm registry or upload
 Moving a published tag is rejected for projects that already resolved it, including
 on a fresh machine, because the commit and content hash no longer match.
 
+Git packages do not require registry documentation metadata. Elm registry
+publication still applies Elm's normal documentation checks.
+
 Package projects may include `src/Elm/Kernel/*.js` and effect manager modules.
 Applications remain unable to include kernel code. Custom infix declarations stay
 restricted to the official core package authors.

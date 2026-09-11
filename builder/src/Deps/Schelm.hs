@@ -18,6 +18,7 @@ module Deps.Schelm
   , restore
   , persistResolved
   , fetchVersions
+  , isGitPackage
   , prepareOfficial
   , prepareGit
   )
@@ -55,6 +56,11 @@ fileName = "schelm.json"
 
 markerName :: FilePath
 markerName = ".schelm-origin.json"
+
+
+isGitPackage :: FilePath -> IO Bool
+isGitPackage packageRoot =
+  Dir.doesFileExist (packageRoot </> markerName)
 
 
 data Origin

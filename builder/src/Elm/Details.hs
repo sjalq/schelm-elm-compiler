@@ -40,6 +40,7 @@ import qualified AST.Optimized as Opt
 import qualified BackgroundWriter as BW
 import qualified Compile
 import qualified Deps.Registry as Registry
+import qualified Deps.Schelm as Schelm
 import qualified Deps.Solver as Solver
 import qualified Deps.Website as Website
 import qualified Elm.Constraint as Con
@@ -642,11 +643,14 @@ crawlModule foreignDeps mvar pkg src docsStatus name =
       exists <- File.exists path
       case Map.lookup name foreignDeps of
         Just ForeignAmbiguous ->
-          return Nothing
+          do  Lamdera.debug $ "Ambiguous dependency module " ++ ModuleName.toChars name
+              return Nothing
 
         Just (ForeignSpecific iface) ->
           if exists
-          then return Nothing
+          then do
+            Lamdera.debug $ "Dependency module collides with a foreign module: " ++ ModuleName.toChars name
+            return Nothing
           else return (Just (SForeign iface))
 
         Nothing ->
@@ -657,7 +661,8 @@ crawlModule foreignDeps mvar pkg src docsStatus name =
             crawlKernel foreignDeps mvar pkg src name
 
           else
-            return Nothing
+            do  Lamdera.debug $ "Missing dependency module " ++ ModuleName.toChars name
+                return Nothing
 
 
 crawlFile :: Map.Map ModuleName.Raw ForeignInterface -> MVar StatusDict -> Pkg.Name -> FilePath -> DocsStatus -> ModuleName.Raw -> FilePath -> IO (Maybe Status)
@@ -670,7 +675,8 @@ crawlFile foreignDeps mvar pkg src docsStatus expectedName path =
               return (Just (SLocal docsStatus deps modul))
 
         _ ->
-          return Nothing
+          do  Lamdera.debug $ "Could not parse dependency module " ++ ModuleName.toChars expectedName
+              return Nothing
 
 
 crawlImports :: Map.Map ModuleName.Raw ForeignInterface -> MVar StatusDict -> Pkg.Name -> FilePath -> [Src.Import] -> IO (Map.Map ModuleName.Raw ())
@@ -694,7 +700,8 @@ crawlKernel foreignDeps mvar pkg src name =
                        & Lamdera.alternativeImplementationPassthrough (Lamdera.PackageReplacements.getReplacement pkg name)
               case Kernel.fromByteString pkg (Map.mapMaybe getDepHome foreignDeps) bytes of
                 Nothing ->
-                  return Nothing
+                  do  Lamdera.debug $ "Could not parse dependency kernel module " ++ ModuleName.toChars name
+                      return Nothing
 
                 Just (Kernel.Content imports chunks) ->
                   do  _ <- crawlImports foreignDeps mvar pkg src imports
@@ -734,7 +741,8 @@ compile pkg mvar status =
             Just results ->
               case Compile.compile Nothing pkg (Map.mapMaybe getInterface results) modul of
                 Left _ ->
-                  return Nothing
+                  do  Lamdera.debug $ "Dependency compilation failed in " ++ ModuleName.toChars (Src.getName modul)
+                      return Nothing
 
                 Right (Compile.Artifacts canonical annotations objects) ->
                   let
@@ -773,8 +781,10 @@ data DocsStatus
 
 getDocsStatus :: Stuff.PackageCache -> Pkg.Name -> V.Version -> IO DocsStatus
 getDocsStatus cache pkg vsn =
-  do  exists <- File.exists (Stuff.package cache pkg vsn </> "docs.json")
-      if exists
+  do  let packageRoot = Stuff.package cache pkg vsn
+      docsExist <- File.exists (packageRoot </> "docs.json")
+      gitPackage <- Schelm.isGitPackage packageRoot
+      if docsExist || gitPackage
         then return DocsNotNeeded
         else return DocsNeeded
 
