@@ -10,6 +10,11 @@ version=$1
 root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 cd "$root"
 
+if [[ -n $(git status --porcelain) ]]; then
+  printf 'refusing to release from a dirty working tree\n' >&2
+  exit 1
+fi
+
 ./scripts/build-schelm.sh
 
 actual=$(dist/schelm/bin/schelm --version)
