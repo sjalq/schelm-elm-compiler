@@ -76,7 +76,7 @@ lamderaReplSrc = $(do
       Left err ->
         error $
           "\nError in Lamdera.Repl.lamderaRepl during the compiler " ++ err ++ " phase.\
-          \\n  Try running `lamdera make src/Repl/Worker.elm` directly."
+          \\n  Try running `schelm make src/Repl/Worker.elm` directly."
 
   minifiedCode <- TH.runIO $ do
     isGithubActions <- Lamdera.lookupEnv "GITHUB_ACTIONS"

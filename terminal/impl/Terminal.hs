@@ -24,16 +24,15 @@ import System.IO (hPutStr, hPutStrLn, stdout)
 import qualified Text.PrettyPrint.ANSI.Leijen as P
 import qualified Text.Read as Read
 
-import qualified Elm.Version as V
 import Terminal.Internal
 import qualified Terminal.Chomp as Chomp
 import qualified Terminal.Error as Error
 
 
 import qualified Lamdera
-import qualified Lamdera.Version
 import qualified Lamdera.CLI.Format
 import qualified Sanity
+import qualified Schelm.Version as Schelm
 
 -- COMMAND
 
@@ -44,11 +43,15 @@ _command details example args_ flags_ callback =
       argStrings <- Env.getArgs
       case argStrings of
         ["--version"] ->
-          do  hPutStrLn stdout (V.toChars V.compiler)
+          do  hPutStrLn stdout Schelm.short
+              Exit.exitSuccess
+
+        ["--elm-version"] ->
+          do  hPutStrLn stdout Schelm.elm
               Exit.exitSuccess
 
         ["--version-full"] ->
-          do  hPutStrLn stdout (Lamdera.Version.full)
+          do  hPutStrLn stdout Schelm.full
               Exit.exitSuccess
 
         chunks ->
@@ -80,11 +83,15 @@ app intro outro commands =
           Error.exitWithOverview intro outro commands
 
         ["--version"] ->
-          do  hPutStrLn stdout (V.toChars V.compiler)
+          do  hPutStrLn stdout Schelm.short
+              Exit.exitSuccess
+
+        ["--elm-version"] ->
+          do  hPutStrLn stdout Schelm.elm
               Exit.exitSuccess
 
         ["--version-full"] ->
-          do  hPutStrLn stdout (Lamdera.Version.full)
+          do  hPutStrLn stdout Schelm.full
               Exit.exitSuccess
 
         command : chunks ->

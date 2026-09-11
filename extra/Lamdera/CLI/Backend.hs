@@ -933,7 +933,7 @@ addBackendModelErrorDecl =
 
 getBackendModelError :: String
 getBackendModelError =
-  "Debug.todo \"No backend model found.\\nMake sure you have run your app with `lamdera live` recently.\""
+  "Debug.todo \"No backend model found.\\nMake sure you have run your app with `schelm live` recently.\""
 
 
 getBackendModel :: Int ->IO (Maybe T.Text)

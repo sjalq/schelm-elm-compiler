@@ -186,8 +186,11 @@ getCacheDir projectName =
 
 getElmHome :: IO FilePath
 getElmHome =
-  do  maybeCustomHome <- Env.lookupEnv "ELM_HOME"
-      case maybeCustomHome of
+  do  maybeSchelmHome <- Env.lookupEnv "SCHELM_HOME"
+      case maybeSchelmHome of
         Just customHome -> return customHome
-        Nothing -> Dir.getAppUserDataDirectory "elm"
-          -- & Lamdera.alternativeImplementation (Dir.getAppUserDataDirectory "lamdera")
+        Nothing ->
+          do  maybeElmHome <- Env.lookupEnv "ELM_HOME"
+              case maybeElmHome of
+                Just customHome -> return customHome
+                Nothing -> Dir.getAppUserDataDirectory "schelm"

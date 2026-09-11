@@ -1,0 +1,17 @@
+Schelm
+======
+
+Schelm is an independent compiler distribution maintained by the Schelm
+contributors. It is based on the Lamdera compiler, which is in turn derived
+from the Elm compiler.
+
+Elm compiler copyright 2012-present Evan Czaplicki.
+Lamdera compiler copyright 2020-present Mario Rogic.
+
+The Elm and Lamdera names identify upstream projects. Neither Evan Czaplicki,
+Mario Rogic, the Elm project, nor the Lamdera project endorses Schelm.
+
+The complete BSD-3-Clause terms are in LICENSE. Source distributions must keep
+LICENSE and this attribution. Binary distributions must reproduce the license,
+copyright notices, disclaimer, and this attribution in their accompanying
+materials.

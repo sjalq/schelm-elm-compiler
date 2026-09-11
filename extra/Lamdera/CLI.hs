@@ -61,7 +61,7 @@ login =
       "Log in to the Lamdera CLI."
 
     details =
-      "The `lamdera` command authenticates the Lamdera CLI."
+      "The `schelm` command authenticates with the Lamdera platform."
 
     example =
       reflow
@@ -98,10 +98,10 @@ deploy :: Terminal.Command
 deploy =
   let
     summary =
-      "Deploy Lamdera app after a successful `lamdera check`"
+      "Deploy Lamdera app after a successful `schelm check`"
 
     details =
-      "The `deploy` command is equivalent to `lamdera check && git push lamdera main`"
+      "The `deploy` command is equivalent to `schelm check && git push lamdera main`"
 
     example =
       reflow
@@ -202,16 +202,16 @@ backend =
       "Access the backend model."
 
     details =
-      "The `backend` command gives you access to the backend model of the `lamdera live` session."
+      "The `backend` command gives you access to the backend model of the `schelm live` session."
 
     example =
       stack
         [ "It evaluates the given expression (see below) and returns its value."
         , "In the expression, you can access the backend model under the name `model`."
         , reflow
-            "The variable `model` contains the backend model of the current `lamdera live` session. \
-            \ If the `lamdera live` server is not running, \
-            \ it contains the saved backend model of the last `lamdera live` session."
+            "The variable `model` contains the backend model of the current `schelm live` session. \
+            \ If the `schelm live` server is not running, \
+            \ it contains the saved backend model of the last `schelm live` session."
         ]
 
     backendFlags =
@@ -222,7 +222,7 @@ backend =
               \ For the allowed syntax, see the Lamdera documentation.\
               \ Examples are 'Dict' or 'Dict, Set as S exposing (size)'."
         |-- onOff "repl" "Start a REPL session instead of evaluating a single expression."
-        |-- flag "port" port_ "The port of the `lamdera live` server (default: 8000)."
+        |-- flag "port" port_ "The port of the `schelm live` server (default: 8000)."
         |-- onOff "no-colors" "Disable colors in the output. This can help if your terminal uses a non-standard color scheme that makes values hard to read."
         |-- flag "interpreter" interpreter "Path to an alternative JavaScript interpreter, such as `node` or `nodejs`."
   in

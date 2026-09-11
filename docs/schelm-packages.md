@@ -7,7 +7,7 @@ package comes from somewhere other than the Elm package registry.
 Install a package from any Git remote with:
 
 ```sh
-lamdera install author/project --from https://example.com/author/project.git
+schelm install author/project --from https://example.com/author/project.git
 ```
 
 The command discovers bare semantic version tags such as `1.2.3`, runs the normal

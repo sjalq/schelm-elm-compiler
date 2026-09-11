@@ -108,7 +108,7 @@ init =
                         Outline.AppOutline V.compiler (NE.List (Outline.RelativeSrcDir "src") []) directs indirects Map.empty Map.empty
                       Lamdera.Init.writeDefaultImplementations
                       putStrLn "Okay, I created it. Now read that link!"
-                        Lamdera.& Lamdera.alternativeImplementation (putStrLn "Okay, I created it! Now read those links, or get going with `lamdera live`.")
+                        Lamdera.& Lamdera.alternativeImplementation (putStrLn "Okay, I created it! Now read those links, or get going with `schelm live`.")
                       return (Right ())
 
 

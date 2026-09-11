@@ -154,19 +154,19 @@ validateCliToken = do
               exitFailure
 
             _ -> do
-              Progress.report $ D.fillSep ["───>", D.red "Invalid CLI auth, please re-run `lamdera login`"]
+              Progress.report $ D.fillSep ["───>", D.red "Invalid CLI auth, please re-run `schelm login`"]
               removeToken
               exitFailure
 
         _ -> do
-          Progress.report $ D.fillSep ["───>", D.red "Invalid CLI auth, please re-run `lamdera login`"]
+          Progress.report $ D.fillSep ["───>", D.red "Invalid CLI auth, please re-run `schelm login`"]
           removeToken
           exitFailure
 
 
     Nothing -> do
       debug_ $ "Found no token in " <> elmHome
-      Progress.report $ D.fillSep ["───>", D.red "No CLI auth, please run `lamdera login`"]
+      Progress.report $ D.fillSep ["───>", D.red "No CLI auth, please run `schelm login`"]
       exitFailure
 
 

@@ -4,20 +4,24 @@ Name: elm
 Version: 0.19.1
 
 Synopsis:
-    The `elm` command line interface.
+    The Schelm compiler, based on Lamdera and compatible with Elm.
 
 Description:
-    This includes commands like `elm make`, `elm repl`, and many others
-    for helping make Elm developers happy and productive.
+    This includes commands like `schelm make`, `schelm repl`, and Git-native
+    packages with package-scoped kernel extensions.
 
-Homepage: https://elm-lang.org
+Homepage: https://github.com/sjalq/schelm-elm-compiler
 
 License: BSD-3-Clause
 License-file: LICENSE
+Extra-source-files:
+    NOTICE
+    SCHELM.md
+    docs/schelm-packages.md
 
-Author:     Evan Czaplicki
-Maintainer: info@elm-lang.org
-Copyright:  Copyright (c) 2011-present, Evan Czaplicki
+Author:     Evan Czaplicki, Mario Rogic, and Schelm contributors
+Maintainer: sjalq
+Copyright:  Copyright (c) 2012-present, Evan Czaplicki; Copyright (c) 2020-present, Mario Rogic
 
 Category: Compiler, Language
 
@@ -25,7 +29,7 @@ Build-type: Simple
 
 source-repository head
     type:     git
-    location: git://github.com/elm/compiler.git
+    location: https://github.com/sjalq/schelm-elm-compiler.git
 
 
 Flag dev {
@@ -153,7 +157,7 @@ common shared
         elm-format
 
 
-Executable lamdera
+Executable schelm
     import: shared
 
     if flag(dev)
@@ -446,6 +450,7 @@ Executable lamdera
         StandaloneInstances
         CanSer.CanSer
         Sanity
+        Schelm.Version
         Wire.PrettyPrint
 
         -- Elmx extensions

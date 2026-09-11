@@ -42,7 +42,7 @@ temporaryCheckOldTypesNeedingMigration inProduction root = do
         Progress.throw
           $ Help.report "Evergreen API changes" (Just "src/Evergreen/")
               ("The Evergreen API changed in alpha5. It appears you've not migrated yet!")
-              ([ D.dullyellow $ D.reflow "Please download the latest binary and run `lamdera check` again."
+              ([ D.dullyellow $ D.reflow "Please rebuild the latest Schelm binary and run `schelm check` again."
                , D.reflow $ "https://dashboard.lamdera.app/docs/download"
                , D.reflow $ "See the full release here: https://dashboard.lamdera.app/releases/alpha5"
                ]

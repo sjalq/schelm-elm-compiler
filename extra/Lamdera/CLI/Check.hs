@@ -88,8 +88,8 @@ run () flags@(Lamdera.CLI.Check.Flags destructiveMigration force) = do
             "main" -> runHelp () flags
             "master" -> runHelp () flags
             _ -> do
-              atomicPutStrLn "`lamdera check` is only for main/master branches when preparing for a production deploy."
-              atomicPutStrLn "If you're trying to deploy a preview app, use `lamdera deploy` instead."
+              atomicPutStrLn "`schelm check` is only for main/master branches when preparing for a production deploy."
+              atomicPutStrLn "If you're trying to deploy a preview app, use `schelm deploy` instead."
               pure ()
 
 
@@ -310,7 +310,7 @@ onlineCheck root appName inDebug localTypes externalTypeWarnings isHoistRebuild 
                     Help.report "UNIMPLEMENTED MIGRATION" (Just nextMigrationPathBare)
                       ("The following types have changed since last deploy (v" <> show prodVersion <> ") and require migrations:")
                       [ formattedChangedTypes
-                      , D.reflow $ "Please run `lamdera check` locally to get started implementing a migration."
+                      , D.reflow $ "Please run `schelm check` locally to get started implementing a migration."
                       , D.reflow "See <https://dashboard.lamdera.app/docs/evergreen> for more info."
                       ]
 
@@ -519,7 +519,7 @@ getNextVersionInfo_ nextVersion prodVersion isHoistRebuild localTypesChangedFrom
 
 
 checkForLatestBinaryVersion inDebug = do
-  progressPointer "Checking lamdera version..."
+  progressPointer "Checking upstream Lamdera version..."
   latestVersionText_ <- Lamdera.Update.fetchCurrentVersion
   case latestVersionText_ of
     Right latestVersionText -> do
@@ -561,10 +561,10 @@ checkForLatestBinaryVersion inDebug = do
 
       onlyWhen (latestVersionText /= "skip" && latestVersion > localVersion) $ do
           progressDoc $ D.stack
-            [ D.red $ D.reflow $ "NOTE: There is a new lamdera version, please upgrade before you deploy."
+            [ D.red $ D.reflow $ "NOTE: There is a new upstream Lamdera version. Rebase Schelm before deploying."
             , D.reflow $ "Current: " <> Lamdera.Version.short
             , D.reflow $ "New:     " <> T.unpack latestVersionText
-            , D.reflow $ "Run `lamdera update`, or download it here: <https://dashboard.lamdera.app/docs/download>"
+            , D.reflow $ "Update the upstream-lamdera branch, rebuild Schelm, and run `schelm check` again."
             ]
 
       onlyWhen (latestVersion < localVersion) $ do

@@ -763,7 +763,7 @@ installToReport exit =
     InstallNoOutline ->
       Help.report "NEW PROJECT?" Nothing
         "Are you trying to start a new project? Try this command instead:"
-        [ D.indent 4 $ D.green "lamdera init"
+        [ D.indent 4 $ D.green "schelm init"
         , D.reflow "It will help you get started!"
         ]
 
@@ -778,9 +778,9 @@ installToReport exit =
       Help.report "INSTALL WHAT?" Nothing
         "I am expecting commands like:"
         [ D.green $ D.indent 4 $ D.vcat $
-            [ "lamdera install elm/http"
-            , "lamdera install elm/json"
-            , "lamdera install elm/random"
+            [ "schelm install elm/http"
+            , "schelm install elm/json"
+            , "schelm install elm/random"
             ]
         , D.toFancyHint
             ["In","JavaScript","folks","run","`npm install`","to","start","projects."
@@ -791,9 +791,9 @@ installToReport exit =
             ,"Elm","projects","check","that","cache","before","trying","the","internet."
             ,"This","reduces","build","times,","reduces","server","costs,","and","makes","it"
             ,"easier","to","work","offline.","As","a","result"
-            ,D.dullcyan "lamdera install","is","only","for","adding","dependencies","to","elm.json,"
-            ,"whereas",D.dullcyan "lamdera make","is","in","charge","of","gathering","dependencies"
-            ,"and","building","everything.","So","maybe","try",D.green "lamdera make","instead?"
+            ,D.dullcyan "schelm install","is","only","for","adding","dependencies","to","elm.json,"
+            ,"whereas",D.dullcyan "schelm make","is","in","charge","of","gathering","dependencies"
+            ,"and","building","everything.","So","maybe","try",D.green "schelm make","instead?"
             ]
         ]
 
@@ -1049,7 +1049,7 @@ toOutlineReport problem =
         [ D.reflow $
             "If you modified your elm.json by hand, try to change it back! And if you are\
             \ having trouble getting back to a working elm.json, it may be easier to delete it\
-            \ and use `lamdera init` to start fresh."
+            \ and use `schelm init` to start fresh."
         ]
 
     OutlineNoAppJson ->
@@ -1059,14 +1059,14 @@ toOutlineReport problem =
         [ D.reflow $
             "If you modified your elm.json by hand, try to change it back! And if you are\
             \ having trouble getting back to a working elm.json, it may be easier to delete it\
-            \ and use `lamdera init` to start fresh."
+            \ and use `schelm init` to start fresh."
         ]
 
     OutlineLamderaMissingDeps ->
       Help.report "MISSING DEPENDENCY" (Just "elm.json")
         "A Lamdera application must have \"lamdera/core\" as a dependency."
         [ D.reflow "You can install it with:"
-        , D.indent 4 $ D.green $ "lamdera install lamdera/core"
+        , D.indent 4 $ D.green $ "schelm install lamdera/core"
         , D.reflow "Note: if you're trying to run a normal Elm app, use the elm binary instead."
         ]
 
@@ -1247,7 +1247,7 @@ toOutlineProblemReport path source _ region problem =
             , D.fillSep $
                 ["I","generally","recommend","finding","the","package","you","want","on"
                 ,"the","package","website,","and","installing","it","with","the"
-                ,D.green "lamdera install","command!"
+                ,D.green "schelm install","command!"
                 ]
             ]
         )
@@ -1330,12 +1330,12 @@ toDetailsReport details =
         (
         [ D.fillSep
             ["Did","you","change","them","by","hand?","Try","to","change","it","back!"
-            ,"It","is","much","more","reliable","to","add","dependencies","with",D.green "lamdera install" <> "."
+            ,"It","is","much","more","reliable","to","add","dependencies","with",D.green "schelm install" <> "."
             ]
         , D.reflow $
             "Please ask for help on Discord if you try those paths and are still\
             \ having problems!"
-        , D.dullyellow $ D.reflow "Note: Sometimes `lamdera reset` can fix this problem by rebuilding caches, so give that a try first."
+        , D.dullyellow $ D.reflow "Note: Sometimes `schelm reset` can fix this problem by rebuilding caches, so give that a try first."
         ] ++ (if Lamdera.isDebug_
                 then [ D.reflow "Here are the constraints I was trying to solve:"
                      , D.reflow $ show constraints
@@ -1354,7 +1354,7 @@ toDetailsReport details =
             \ get access to the registry!"
         , D.toFancyNote
             ["If","you","changed","your","dependencies","by","hand,","try","to","change","them","back!"
-            ,"It","is","much","more","reliable","to","add","dependencies","with",D.green "lamdera install" <> "."
+            ,"It","is","much","more","reliable","to","add","dependencies","with",D.green "schelm install" <> "."
             ]
         ]
 
@@ -1394,7 +1394,7 @@ toDetailsReport details =
             "Reason: " ++ reason
         , D.fillSep
             ["Try","to","change","them","back","to","what","they","were","before!"
-            ,"It","is","much","more","reliable","to","add","dependencies","with",D.green "lamdera install" <> "."
+            ,"It","is","much","more","reliable","to","add","dependencies","with",D.green "schelm install" <> "."
             ]
         , D.reflow $
             "Please ask for help on the community forums if you try those paths and are still\
@@ -1469,7 +1469,7 @@ toDetailsReport details =
                     "If you want to help out even more, try building the package locally. That should\
                     \ give you much more specific information about why this package is failing to\
                     \ build, which will in turn make it easier for the package author to fix it!"
-                , D.dullyellow $ D.reflow "Note: Sometimes `lamdera reset` can fix this problem by rebuilding caches, so give that a try first."
+                , D.dullyellow $ D.reflow "Note: Sometimes `schelm reset` can fix this problem by rebuilding caches, so give that a try first."
                 ]
 
 
@@ -1687,7 +1687,7 @@ makeToReport make =
     MakeNoOutline ->
       Help.report "NO elm.json FILE" Nothing
         "It looks like you are starting a new Lamdera Elm project. Very exciting! Try running:"
-        [ D.indent 4 $ D.green $ "lamdera init"
+        [ D.indent 4 $ D.green $ "schelm init"
         , D.reflow $
             "It will help you get set up. It is really simple!"
         ]
@@ -1712,8 +1712,8 @@ makeToReport make =
       Help.report "NO INPUT" Nothing
         "What should I make though? I need specific files like:"
         [ D.vcat
-            [ D.indent 4 $ D.green "lamdera make src/Main.elm"
-            , D.indent 4 $ D.green "lamdera make src/This.elm src/That.elm"
+            [ D.indent 4 $ D.green "schelm make src/Main.elm"
+            , D.indent 4 $ D.green "schelm make src/This.elm src/That.elm"
             ]
         , D.reflow $
             "I recommend reading through https://guide.elm-lang.org for guidance on what to\
@@ -1724,8 +1724,8 @@ makeToReport make =
       Help.report "NO INPUT" Nothing
         "What should I make though? I need specific files like:"
         [ D.vcat
-            [ D.indent 4 $ D.green "lamdera make src/Main.elm"
-            , D.indent 4 $ D.green "lamdera make src/This.elm src/That.elm"
+            [ D.indent 4 $ D.green "schelm make src/Main.elm"
+            , D.indent 4 $ D.green "schelm make src/This.elm src/That.elm"
             ]
         , D.reflow $
             "You can also entries to the \"exposed-modules\" list in your elm.json file, and\
@@ -2102,7 +2102,7 @@ reactorToReport problem =
     ReactorNoOutline ->
       Help.report "NEW PROJECT?" Nothing
         "Are you trying to start a new project? Try this command in the terminal:"
-        [ D.indent 4 $ D.green "lamdera init"
+        [ D.indent 4 $ D.green "schelm init"
         , D.reflow "It will help you get started!"
         ]
 

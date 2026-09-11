@@ -25,9 +25,8 @@ import qualified Publish
 import qualified Repl
 
 
-import qualified Lamdera.Version
 import qualified Lamdera.CLI
-import qualified Lamdera.Version
+import qualified Schelm.Version as Schelm
 
 -- MAIN
 
@@ -45,15 +44,14 @@ main =
     , make
     , repl
     , Lamdera.CLI.reset
-    , Lamdera.CLI.update
     , Lamdera.CLI.annotate
     , Lamdera.CLI.eval
     , Lamdera.CLI.backend
     , Lamdera.CLI.format
-    -- , reactor
-    -- , bump
-    -- , diff
-    -- , publish
+    , reactor
+    , bump
+    , diff
+    , publish
     ]
 
 
@@ -62,9 +60,11 @@ intro =
   P.vcat
     [ P.fillSep
         ["Hi,","thank","you","for","trying","out"
-        ,P.green "Lamdera"
-        ,P.green (P.text Lamdera.Version.short)
-        ,"on"
+        ,P.green "Schelm"
+        ,P.green (P.text Schelm.short)
+        ,"based","on","Lamdera"
+        ,P.green (P.text Schelm.lamdera)
+        ,"and"
         ,P.green "Elm"
         ,P.green (P.text (V.toChars V.compiler)) <> "."
         ,"I hope you like it!"
@@ -72,7 +72,7 @@ intro =
     , ""
     , P.black "-------------------------------------------------------------------------------"
     , P.black "I highly recommend working through <https://guide.elm-lang.org> to get started."
-    , P.black "It teaches many important concepts, including how to use `elm` in the terminal."
+    , P.black "It teaches many important concepts, including how to use `schelm` in the terminal."
     , P.black "-------------------------------------------------------------------------------"
     ]
 
@@ -80,9 +80,9 @@ intro =
 outro :: P.Doc
 outro =
   P.fillSep $ map P.text $ words $
-    "Be sure to ask on the Elm slack if you run into trouble! Folks are friendly and\
-    \ happy to help out. They hang out there because it is fun, so be kind to get the\
-    \ best results!"
+    "Schelm is an independent compiler fork. For Elm language questions, the Elm\
+    \ community resources remain useful. For Schelm-specific behavior, use the\
+    \ Schelm repository."
 
 
 
@@ -93,16 +93,16 @@ init :: Terminal.Command
 init =
   let
     summary =
-      "Start a Lamdera Elm project. It creates a starter elm.json file and\
+      "Start a Schelm project. It creates a starter elm.json file and\
       \ provides a link explaining what to do from there."
 
     details =
-      "The `init` command helps start Lamdera Elm projects:"
+      "The `init` command helps start Schelm projects:"
 
     example =
       reflow
         "It will ask permission to create an elm.json file, the one thing common\
-        \ to all Lamdera Elm projects. It also provides a link explaining what to do from there."
+        \ to all Schelm projects. It also provides a link explaining what to do from there."
   in
   Terminal.Command "init" (Common summary) details example noArgs noFlags Init.run
 
@@ -199,7 +199,7 @@ make =
       stack
         [ reflow
             "For example:"
-        , P.indent 4 $ P.green "lamdera make src/Main.elm"
+        , P.indent 4 $ P.green "schelm make src/Main.elm"
         , reflow
             "This tries to compile an Elm file named src/Main.elm, generating an index.html\
             \ file if possible."
@@ -235,8 +235,8 @@ install =
         [ reflow
             "For example, if you want to get packages for HTTP and JSON, you would say:"
         , P.indent 4 $ P.green $ P.vcat $
-              [ "lamdera install elm/http"
-              , "lamdera install elm/json"
+              [ "schelm install elm/http"
+              , "schelm install elm/json"
               ]
         , reflow
             "Notice that you must say the AUTHOR name and PROJECT name! After running those\
