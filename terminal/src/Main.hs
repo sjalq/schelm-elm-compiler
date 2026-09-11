@@ -251,8 +251,23 @@ install =
         [ require0 Install.NoArgs
         , require1 Install.Install package
         ]
+
+    installFlags =
+      flags Install.Flags
+        |-- flag "from" gitRemote "Install this package from a Git remote. Release tags must be bare Elm versions such as 1.2.3."
   in
-  Terminal.Command "install" Uncommon details example installArgs noFlags Install.run
+  Terminal.Command "install" Uncommon details example installArgs installFlags Install.run
+
+
+gitRemote :: Parser String
+gitRemote =
+  Parser
+    { _singular = "git remote"
+    , _plural = "git remotes"
+    , _parser = \chars -> if null chars then Nothing else Just chars
+    , _suggest = \_ -> return []
+    , _examples = \_ -> return ["https://github.com/author/project.git"]
+    }
 
 
 

@@ -19,6 +19,7 @@ import Control.Concurrent.MVar (MVar, newEmptyMVar, newMVar, putMVar, readMVar, 
 import Control.Monad (liftM, liftM2, liftM3)
 import Data.Binary (Binary, get, put, getWord8, putWord8)
 import qualified Data.Either as Either
+import qualified Data.List as List
 import qualified Data.Map as Map
 import qualified Data.Map.Utils as Map
 import qualified Data.Map.Merge.Strict as Map
@@ -30,6 +31,7 @@ import qualified Data.Set as Set
 import qualified Data.Utf8 as Utf8
 import Data.Word (Word64)
 import qualified System.Directory as Dir
+import qualified System.FilePath as FP
 import System.FilePath ((</>), (<.>))
 
 import qualified AST.Canonical as Can
@@ -164,8 +166,9 @@ verifyInstall scope root (Solver.Env cache manager connection registry) outline 
 load :: Reporting.Style -> BW.Scope -> FilePath -> IO (Either Exit.Details Details)
 load style scope root =
   do  newTime <- File.getTime (root </> "elm.json")
+      hasSchelm <- Dir.doesFileExist (root </> "schelm.json")
       maybeDetails <- File.readBinary (Stuff.details root)
-      case maybeDetails of
+      case if hasSchelm then Nothing else maybeDetails of
         Nothing ->
           generate style scope root newTime
 
@@ -340,23 +343,59 @@ verifyDependencies env@(Env key scope root cache _ _ _) time outline solution di
         Map.traverseWithKey (\k v -> fork (verifyDep env mvar solution k v)) solution
       putMVar mvar mvars
       deps <- traverse readMVar mvars
-      case sequence deps of
-        Left _ ->
-          do  home <- Stuff.getElmHome
-              return $ Left $ Exit.DetailsBadDeps home $
-                Maybe.catMaybes $ Either.lefts $ Map.elems deps
+      collision <- findKernelCollision cache solution
+      case collision of
+        Just (name, packages) -> return (Left (Exit.DetailsKernelModuleCollision name packages))
+        Nothing ->
+          case sequence deps of
+                Left _ ->
+                  do  home <- Stuff.getElmHome
+                      return $ Left $ Exit.DetailsBadDeps home $
+                        Maybe.catMaybes $ Either.lefts $ Map.elems deps
 
-        Right artifacts ->
-          let
-            objs = Map.foldr addObjects Opt.empty artifacts
-            ifaces = Map.foldrWithKey (addInterfaces directDeps) Map.empty artifacts
-            foreigns = Map.map (OneOrMore.destruct Foreign) $ Map.foldrWithKey gatherForeigns Map.empty $ Map.intersection artifacts directDeps
-            details = Details time outline 0 Map.empty foreigns (ArtifactsFresh ifaces objs)
-          in
-          do  BW.writeBinary scope (Stuff.objects    root) objs
-              BW.writeBinary scope (Stuff.interfaces root) ifaces
-              BW.writeBinary scope (Stuff.details    root) details
-              return (Right details)
+                Right artifacts ->
+                  let
+                    objs = Map.foldr addObjects Opt.empty artifacts
+                    ifaces = Map.foldrWithKey (addInterfaces directDeps) Map.empty artifacts
+                    foreigns = Map.map (OneOrMore.destruct Foreign) $ Map.foldrWithKey gatherForeigns Map.empty $ Map.intersection artifacts directDeps
+                    details = Details time outline 0 Map.empty foreigns (ArtifactsFresh ifaces objs)
+                  in
+                  do  BW.writeBinary scope (Stuff.objects    root) objs
+                      BW.writeBinary scope (Stuff.interfaces root) ifaces
+                      BW.writeBinary scope (Stuff.details    root) details
+                      return (Right details)
+
+
+findKernelCollision :: Stuff.PackageCache -> Map.Map Pkg.Name Solver.Details -> IO (Maybe (String, [Pkg.Name]))
+findKernelCollision cache solution =
+  do  entries <- mapM packageModules (Map.toList solution)
+      let owners = Map.fromListWith (++) [(name, [pkg]) | (pkg, names) <- entries, name <- names]
+      return $ case filter ((> 1) . length . snd) (Map.toList owners) of
+        collision : _ -> Just collision
+        [] -> Nothing
+  where
+    packageModules (pkg, Solver.Details vsn _) =
+      do  let root = Stuff.package cache pkg vsn </> "src" </> "Elm" </> "Kernel"
+          exists <- Dir.doesDirectoryExist root
+          names <- if exists then kernelModules root "" else return []
+          return (pkg, List.nub names)
+
+
+kernelModules :: FilePath -> FilePath -> IO [String]
+kernelModules root relative =
+  do  let path = root </> relative
+      entries <- Dir.listDirectory path
+      fmap concat $ mapM (visit relative) entries
+  where
+    visit parent entry =
+      do  let relativePath = parent </> entry
+          let path = root </> relativePath
+          directory <- Dir.doesDirectoryExist path
+          if directory
+            then kernelModules root relativePath
+            else if FP.takeExtension entry == ".js"
+              then return [FP.dropExtensions relativePath]
+              else return []
 
 
 addObjects :: Artifacts -> Opt.GlobalGraph -> Opt.GlobalGraph

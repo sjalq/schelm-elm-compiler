@@ -94,6 +94,7 @@ common shared
         text,
         -- Extra
         aeson,
+        cryptonite,
         neat-interpolation,
         natural-sort,
         listsafe,
@@ -212,6 +213,7 @@ Executable lamdera
         Deps.Bump
         Deps.Diff
         Deps.Registry
+        Deps.Schelm
         Deps.Solver
         Deps.Website
         File

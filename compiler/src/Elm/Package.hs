@@ -6,6 +6,7 @@ module Elm.Package
   , Project
   , Canonical(..)
   , isKernel
+  , isOfficialKernel
   , toChars
   , toUrl
   , toFilePath
@@ -97,7 +98,11 @@ data Canonical =
 
 
 isKernel :: Name -> Bool
-isKernel (Name author _) =
+isKernel _ = True
+
+
+isOfficialKernel :: Name -> Bool
+isOfficialKernel (Name author _) =
   author == elm || author == elm_explorations
     || author == authorLamdera
 

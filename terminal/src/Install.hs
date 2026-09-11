@@ -1,6 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Install
   ( Args(..)
+  , Flags(..)
   , run
   -- @LAMDERA exposed all below
   , Changes(..)
@@ -22,6 +23,7 @@ import qualified Data.Map.Merge.Strict as Map
 import qualified BackgroundWriter as BW
 import qualified Deps.Solver as Solver
 import qualified Deps.Registry as Registry
+import qualified Deps.Schelm as Schelm
 import qualified Elm.Constraint as C
 import qualified Elm.Details as Details
 import qualified Elm.Package as Pkg
@@ -44,8 +46,13 @@ data Args
   | Install Pkg.Name
 
 
-run :: Args -> () -> IO ()
-run args () =
+data Flags = Flags
+  { _from :: Maybe String
+  }
+
+
+run :: Args -> Flags -> IO ()
+run args (Flags maybeSource) =
   Reporting.attempt Exit.installToReport $
     do  maybeRoot <- Stuff.findRoot
         case maybeRoot of
@@ -59,17 +66,31 @@ run args () =
                     return (Left (Exit.InstallNoArgs elmHome))
 
               Install pkg ->
-                Task.run $
-                  do  env <- Task.eio Exit.InstallBadRegistry $ Solver.initEnv
-                      oldOutline <- Task.eio Exit.InstallBadOutline $ Outline.read root False
-                      case oldOutline of
-                        Outline.App outline ->
-                          do  changes <- makeAppPlan env pkg outline
-                              attemptChanges root env oldOutline V.toChars changes
+                do  oldSchelm <- Schelm.snapshot root
+                    sourceResult <-
+                      case maybeSource of
+                        Nothing -> return (Right ())
+                        Just source -> Schelm.setSource root pkg source
+                    case sourceResult of
+                      Left problem ->
+                        do  Schelm.restore root oldSchelm
+                            return (Left (Exit.InstallHadSolverTrouble (Exit.SolverSchelmProblem problem)))
+                      Right () ->
+                        do  result <- Task.run $
+                              do  env <- Task.eio Exit.InstallBadRegistry $ Solver.initEnv
+                                  oldOutline <- Task.eio Exit.InstallBadOutline $ Outline.read root False
+                                  case oldOutline of
+                                    Outline.App outline ->
+                                      do  changes <- makeAppPlan env pkg outline
+                                          attemptChanges root env oldOutline V.toChars changes
 
-                        Outline.Pkg outline ->
-                          do  changes <- makePkgPlan env pkg outline
-                              attemptChanges root env oldOutline C.toChars changes
+                                    Outline.Pkg outline ->
+                                      do  changes <- makePkgPlan env pkg outline
+                                          attemptChanges root env oldOutline C.toChars changes
+                            case result of
+                              Left problem -> Schelm.restore root oldSchelm >> return (Left problem)
+                              Right False -> Schelm.restore root oldSchelm >> return (Right ())
+                              Right True -> return (Right ())
 
 
 
@@ -86,11 +107,11 @@ data Changes vsn
 type Task = Task.Task Exit.Install
 
 
-attemptChanges :: FilePath -> Solver.Env -> Outline.Outline -> (a -> String) -> Changes a -> Task ()
+attemptChanges :: FilePath -> Solver.Env -> Outline.Outline -> (a -> String) -> Changes a -> Task Bool
 attemptChanges root env oldOutline toChars changes =
   case changes of
     AlreadyInstalled ->
-      Task.io $ putStrLn "It is already installed!"
+      Task.io $ putStrLn "It is already installed!" >> return True
 
     PromoteIndirect newOutline ->
       attemptChangesHelp root env oldOutline newOutline $
@@ -131,7 +152,7 @@ attemptChanges root env oldOutline toChars changes =
         ]
 
 
-attemptChangesHelp :: FilePath -> Solver.Env -> Outline.Outline -> Outline.Outline -> D.Doc -> Task ()
+attemptChangesHelp :: FilePath -> Solver.Env -> Outline.Outline -> Outline.Outline -> D.Doc -> Task Bool
 attemptChangesHelp root env oldOutline newOutline question =
   Task.eio Exit.InstallBadDetails $
   BW.withScope $ \scope ->
@@ -147,10 +168,10 @@ attemptChangesHelp root env oldOutline newOutline question =
 
                 Right () ->
                   do  putStrLn "Success!"
-                      return (Right ())
+                      return (Right True)
         else
           do  putStrLn "Okay, I did not change anything!"
-              return (Right ())
+              return (Right False)
 
 
 
@@ -194,26 +215,27 @@ makeAppPlan (Solver.Env cache _ connection registry) pkg outline@(Outline.AppOut
 
               Nothing ->
                 -- finally try to add it from scratch
-                case Registry.getVersions' pkg registry of
-                  Left suggestions ->
-                    case connection of
-                      Solver.Online _ -> Task.throw (Exit.InstallUnknownPackageOnline pkg suggestions)
-                      Solver.Offline  -> Task.throw (Exit.InstallUnknownPackageOffline pkg suggestions)
+                do  custom <- isCustomPackage pkg
+                    case (custom, Registry.getVersions' pkg registry) of
+                      (False, Left suggestions) ->
+                        case connection of
+                          Solver.Online _ -> Task.throw (Exit.InstallUnknownPackageOnline pkg suggestions)
+                          Solver.Offline  -> Task.throw (Exit.InstallUnknownPackageOffline pkg suggestions)
 
-                  Right _ ->
-                    do  result <- Task.io $ Solver.addToApp cache connection registry pkg outline
-                        case result of
-                          Solver.Ok (Solver.AppSolution old new app) ->
-                            return (Changes (detectChanges old new) (Outline.App app))
+                      _ ->
+                        do  result <- Task.io $ Solver.addToApp cache connection registry pkg outline
+                            case result of
+                              Solver.Ok (Solver.AppSolution old new app) ->
+                                return (Changes (detectChanges old new) (Outline.App app))
 
-                          Solver.NoSolution ->
-                            Task.throw (Exit.InstallNoOnlineAppSolution pkg)
+                              Solver.NoSolution ->
+                                Task.throw (Exit.InstallNoOnlineAppSolution pkg)
 
-                          Solver.NoOfflineSolution ->
-                            Task.throw (Exit.InstallNoOfflineAppSolution pkg)
+                              Solver.NoOfflineSolution ->
+                                Task.throw (Exit.InstallNoOfflineAppSolution pkg)
 
-                          Solver.Err exit ->
-                            Task.throw (Exit.InstallHadSolverTrouble exit)
+                              Solver.Err exit ->
+                                Task.throw (Exit.InstallHadSolverTrouble exit)
 
 
 
@@ -236,40 +258,49 @@ makePkgPlan (Solver.Env cache _ connection registry) pkg outline@(Outline.PkgOut
 
       Nothing ->
         -- try to add a new dependency
-        case Registry.getVersions' pkg registry of
-          Left suggestions ->
-            case connection of
-              Solver.Online _ -> Task.throw (Exit.InstallUnknownPackageOnline pkg suggestions)
-              Solver.Offline  -> Task.throw (Exit.InstallUnknownPackageOffline pkg suggestions)
+        do  custom <- isCustomPackage pkg
+            case (custom, Registry.getVersions' pkg registry) of
+              (False, Left suggestions) ->
+                case connection of
+                  Solver.Online _ -> Task.throw (Exit.InstallUnknownPackageOnline pkg suggestions)
+                  Solver.Offline  -> Task.throw (Exit.InstallUnknownPackageOffline pkg suggestions)
 
-          Right (Registry.KnownVersions _ _) ->
-            do  let old = Map.union deps test
-                let cons = Map.insert pkg C.anything old
-                result <- Task.io $ Solver.verify cache connection registry cons
-                case result of
-                  Solver.Ok solution ->
-                    let
-                      (Solver.Details vsn _) = solution ! pkg
+              _ ->
+                do  let old = Map.union deps test
+                    let cons = Map.insert pkg C.anything old
+                    result <- Task.io $ Solver.verifyPlan cache connection registry cons
+                    case result of
+                      Solver.Ok solution ->
+                        let
+                          (Solver.Details vsn _) = solution ! pkg
 
-                      con = C.untilNextMajor vsn
-                      new = Map.insert pkg con old
-                      changes = detectChanges old new
-                      news = Map.mapMaybe keepNew changes
-                    in
-                    return $ Changes changes $ Outline.Pkg $
-                      outline
-                        { Outline._pkg_deps = addNews (Just pkg) news deps
-                        , Outline._pkg_test_deps = addNews Nothing news test
-                        }
+                          con = C.untilNextMajor vsn
+                          new = Map.insert pkg con old
+                          changes = detectChanges old new
+                          news = Map.mapMaybe keepNew changes
+                        in
+                        return $ Changes changes $ Outline.Pkg $
+                          outline
+                            { Outline._pkg_deps = addNews (Just pkg) news deps
+                            , Outline._pkg_test_deps = addNews Nothing news test
+                            }
 
-                  Solver.NoSolution ->
-                    Task.throw (Exit.InstallNoOnlinePkgSolution pkg)
+                      Solver.NoSolution ->
+                        Task.throw (Exit.InstallNoOnlinePkgSolution pkg)
 
-                  Solver.NoOfflineSolution ->
-                    Task.throw (Exit.InstallNoOfflinePkgSolution pkg)
+                      Solver.NoOfflineSolution ->
+                        Task.throw (Exit.InstallNoOfflinePkgSolution pkg)
 
-                  Solver.Err exit ->
-                    Task.throw (Exit.InstallHadSolverTrouble exit)
+                      Solver.Err exit ->
+                        Task.throw (Exit.InstallHadSolverTrouble exit)
+
+
+isCustomPackage :: Pkg.Name -> Task Bool
+isCustomPackage pkg =
+  do  result <- Task.io Schelm.read
+      case result of
+        Left problem -> Task.throw (Exit.InstallHadSolverTrouble (Exit.SolverSchelmProblem problem))
+        Right config -> return (Schelm.hasCustomSource config pkg)
 
 
 addNews :: Maybe Pkg.Name -> Map.Map Pkg.Name C.Constraint -> Map.Map Pkg.Name C.Constraint -> Map.Map Pkg.Name C.Constraint

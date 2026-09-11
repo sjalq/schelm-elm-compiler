@@ -6,6 +6,7 @@ module Deps.Solver
   --
   , Details(..)
   , verify
+  , verifyPlan
   --
   , AppSolution(..)
   , addToApp
@@ -24,6 +25,7 @@ import qualified System.Directory as Dir
 import System.FilePath ((</>))
 
 import qualified Deps.Registry as Registry
+import qualified Deps.Schelm as Schelm
 import qualified Deps.Website as Website
 import qualified Elm.Constraint as C
 import qualified Elm.Package as Pkg
@@ -61,6 +63,8 @@ data State =
     , _connection :: Connection
     , _registry :: Registry.Registry
     , _constraints :: Map.Map (Pkg.Name, V.Version) Constraints
+    , _schelm :: Schelm.Config
+    , _origins :: Map.Map Pkg.Name Schelm.Origin
     }
 
 
@@ -68,6 +72,7 @@ data Constraints =
   Constraints
     { _elm :: C.Constraint
     , _deps :: Map.Map Pkg.Name C.Constraint
+    , _depOrigins :: Map.Map Pkg.Name Schelm.Origin
     }
 
 
@@ -96,20 +101,38 @@ data Details =
 
 
 verify :: Stuff.PackageCache -> Connection -> Registry.Registry -> Map.Map Pkg.Name C.Constraint -> IO (Result (Map.Map Pkg.Name Details))
-verify cache connection registry constraints =
+verify = verifyHelp True
+
+
+verifyPlan :: Stuff.PackageCache -> Connection -> Registry.Registry -> Map.Map Pkg.Name C.Constraint -> IO (Result (Map.Map Pkg.Name Details))
+verifyPlan = verifyHelp True
+
+
+verifyHelp :: Bool -> Stuff.PackageCache -> Connection -> Registry.Registry -> Map.Map Pkg.Name C.Constraint -> IO (Result (Map.Map Pkg.Name Details))
+verifyHelp shouldPersist cache connection registry constraints =
   Stuff.withRegistryLock cache $
-  case try constraints of
-    Solver solver ->
-      solver (State cache connection registry Map.empty)
-        (\s a _ -> return $ Ok (Map.mapWithKey (addDeps s) a))
-        (\_     -> return $ noSolution connection)
-        (\e     -> return $ Err e)
+  do  schelmResult <- Schelm.read
+      case schelmResult of
+        Left problem -> return (Err (Exit.SolverSchelmProblem problem))
+        Right schelm ->
+          case try constraints of
+            Solver solver ->
+              let origins = Map.mapWithKey (\name _ -> Schelm.rootOrigin schelm name) constraints in
+              solver (State cache connection registry Map.empty schelm origins)
+                (\s a _ ->
+                  do  saved <- if shouldPersist then Schelm.persistResolved (_schelm s) (_origins s) a else return (Right ())
+                      case saved of
+                        Left problem -> return (Err (Exit.SolverSchelmProblem problem))
+                        Right () -> return $ Ok (Map.mapWithKey (addDeps s) a)
+                )
+                (\_ -> return $ noSolution connection)
+                (\e -> return $ Err e)
 
 
 addDeps :: State -> Pkg.Name -> V.Version -> Details
-addDeps (State _ _ _ constraints) name vsn =
+addDeps (State _ _ _ constraints _ _) name vsn =
   case Map.lookup (name, vsn) constraints of
-    Just (Constraints _ deps) -> Details vsn deps
+    Just (Constraints _ deps _) -> Details vsn deps
     Nothing                   -> error "compiler bug manifesting in Deps.Solver.addDeps"
 
 
@@ -135,32 +158,41 @@ data AppSolution =
 addToApp :: Stuff.PackageCache -> Connection -> Registry.Registry -> Pkg.Name -> Outline.AppOutline -> IO (Result AppSolution)
 addToApp cache connection registry pkg outline@(Outline.AppOutline _ _ direct indirect testDirect testIndirect) =
   Stuff.withRegistryLock cache $
-  let
-    allIndirects = Map.union indirect testIndirect
-    allDirects = Map.union direct testDirect
-    allDeps = Map.union allDirects allIndirects
-
-    attempt toConstraint deps =
-      try (Map.insert pkg C.anything (Map.map toConstraint deps))
-  in
-  case
-    oneOf
-      ( attempt C.exactly allDeps )
-      [ attempt C.exactly allDirects
-      , attempt C.untilNextMinor allDirects
-      , attempt C.untilNextMajor allDirects
-      , attempt (\_ -> C.anything) allDirects
-      ]
-  of
-    Solver solver ->
-      solver (State cache connection registry Map.empty)
-        (\s a _ -> return $ Ok (toApp s pkg outline allDeps a))
-        (\_     -> return $ noSolution connection)
-        (\e     -> return $ Err e)
+  do  schelmResult <- Schelm.read
+      case schelmResult of
+        Left problem -> return (Err (Exit.SolverSchelmProblem problem))
+        Right schelm ->
+          let
+            allIndirects = Map.union indirect testIndirect
+            allDirects = Map.union direct testDirect
+            allDeps = Map.union allDirects allIndirects
+            attempt toConstraint deps = try (Map.insert pkg C.anything (Map.map toConstraint deps))
+            requested = Map.insert pkg V.one allDeps
+            origins = Map.mapWithKey (\name _ -> Schelm.rootOrigin schelm name) requested
+          in
+          case
+            oneOf
+              ( attempt C.exactly allDeps )
+              [ attempt C.exactly allDirects
+              , attempt C.untilNextMinor allDirects
+              , attempt C.untilNextMajor allDirects
+              , attempt (\_ -> C.anything) allDirects
+              ]
+          of
+            Solver solver ->
+              solver (State cache connection registry Map.empty schelm origins)
+                (\s a _ ->
+                  do  saved <- Schelm.persistResolved (_schelm s) (_origins s) a
+                      case saved of
+                        Left problem -> return (Err (Exit.SolverSchelmProblem problem))
+                        Right () -> return $ Ok (toApp s pkg outline allDeps a)
+                )
+                (\_ -> return $ noSolution connection)
+                (\e -> return $ Err e)
 
 
 toApp :: State -> Pkg.Name -> Outline.AppOutline -> Map.Map Pkg.Name V.Version -> Map.Map Pkg.Name V.Version -> AppSolution
-toApp (State _ _ _ constraints) pkg (Outline.AppOutline elm srcDirs direct _ testDirect _) old new =
+toApp (State _ _ _ constraints _ _) pkg (Outline.AppOutline elm srcDirs direct _ testDirect _) old new =
   let
     d   = Map.intersection new (Map.insert pkg V.one direct)
     i   = Map.difference (getTransitive constraints new (Map.toList d) Map.empty) d
@@ -225,37 +257,47 @@ exploreGoals (Goals pending solved) =
 
 addVersion :: Goals -> Pkg.Name -> V.Version -> Solver Goals
 addVersion (Goals pending solved) name version =
-  do  (Constraints elm deps) <- getConstraints name version
+  do  (Constraints elm deps depOrigins) <- getConstraints name version
       if C.goodElm elm
         then
-          do  newPending <- foldM (addConstraint solved) pending (Map.toList deps)
+          do  newPending <- foldM (addConstraint solved depOrigins) pending (Map.toList deps)
               return (Goals newPending (Map.insert name version solved))
         else
           backtrack
 
 
-addConstraint :: Map.Map Pkg.Name V.Version -> Map.Map Pkg.Name C.Constraint -> (Pkg.Name, C.Constraint) -> Solver (Map.Map Pkg.Name C.Constraint)
-addConstraint solved unsolved (name, newConstraint) =
-  case Map.lookup name solved of
-    Just version ->
-      if C.satisfies newConstraint version
-      then return unsolved
-      else backtrack
+addConstraint :: Map.Map Pkg.Name V.Version -> Map.Map Pkg.Name Schelm.Origin -> Map.Map Pkg.Name C.Constraint -> (Pkg.Name, C.Constraint) -> Solver (Map.Map Pkg.Name C.Constraint)
+addConstraint solved origins unsolved (name, newConstraint) =
+  do  demandOrigin name (Map.findWithDefault Schelm.Official name origins)
+      case Map.lookup name solved of
+        Just version ->
+          if C.satisfies newConstraint version
+          then return unsolved
+          else backtrack
 
-    Nothing ->
-      case Map.lookup name unsolved of
         Nothing ->
-          return $ Map.insert name newConstraint unsolved
-
-        Just oldConstraint ->
-          case C.intersect oldConstraint newConstraint of
+          case Map.lookup name unsolved of
             Nothing ->
-              backtrack
+              return $ Map.insert name newConstraint unsolved
 
-            Just mergedConstraint ->
-              if oldConstraint == mergedConstraint
-              then return unsolved
-              else return (Map.insert name mergedConstraint unsolved)
+            Just oldConstraint ->
+              case C.intersect oldConstraint newConstraint of
+                Nothing ->
+                  backtrack
+
+                Just mergedConstraint ->
+                  if oldConstraint == mergedConstraint
+                  then return unsolved
+                  else return (Map.insert name mergedConstraint unsolved)
+
+
+demandOrigin :: Pkg.Name -> Schelm.Origin -> Solver ()
+demandOrigin name origin =
+  Solver $ \state ok back _ ->
+    case Map.lookup name (_origins state) of
+      Nothing -> ok (state { _origins = Map.insert name origin (_origins state) }) () back
+      Just existing ->
+        if existing == origin then ok state () back else back state
 
 
 
@@ -264,15 +306,26 @@ addConstraint solved unsolved (name, newConstraint) =
 
 getRelevantVersions :: Pkg.Name -> C.Constraint -> Solver (V.Version, [V.Version])
 getRelevantVersions name constraint =
-  Solver $ \state@(State _ _ registry _) ok back _ ->
-    case Registry.getVersions name registry of
-      Just (Registry.KnownVersions newest previous) ->
-        case filter (C.satisfies constraint) (newest:previous) of
-          []   -> back state
-          v:vs -> ok state (v,vs) back
+  Solver $ \state@(State _ _ registry _ schelm origins) ok back err ->
+    case Map.findWithDefault Schelm.Official name origins of
+      Schelm.Official ->
+        case Registry.getVersions name registry of
+          Just (Registry.KnownVersions newest previous) -> choose state (newest:previous) ok back
+          Nothing -> back state
 
-      Nothing ->
-        back state
+      Schelm.Git source ->
+        do  versionsResult <- Schelm.fetchVersions source
+            case versionsResult of
+              Right versions -> choose state versions ok back
+              Left problem ->
+                case Schelm.pinFor schelm name of
+                  Just pin -> choose state [Schelm._pinVersion pin] ok back
+                  Nothing -> err (Exit.SolverSchelmProblem problem)
+  where
+    choose state versions ok back =
+      case filter (C.satisfies constraint) versions of
+        [] -> back state
+        v:vs -> ok state (v,vs) back
 
 
 
@@ -281,57 +334,62 @@ getRelevantVersions name constraint =
 
 getConstraints :: Pkg.Name -> V.Version -> Solver Constraints
 getConstraints pkg vsn =
-  Solver $ \state@(State cache connection registry cDict) ok back err ->
+  Solver $ \state@(State cache connection registry cDict schelm origins) ok back err ->
     do  let key = (pkg, vsn)
+        let home = Stuff.package cache pkg vsn
+        let path = home </> "elm.json"
+        let withOrigins depOrigins (Constraints elm deps _) = Constraints elm deps depOrigins
+        let finish preparedSchelm depOrigins bare =
+              let cs = withOrigins depOrigins bare
+                  newState = State cache connection registry (Map.insert key cs cDict) preparedSchelm origins
+              in ok newState cs back
+        let load preparedSchelm =
+              do  depOriginsResult <- Schelm.dependencyOrigins home
+                  case depOriginsResult of
+                    Left problem -> err (Exit.SolverSchelmProblem problem)
+                    Right depOrigins ->
+                      do  outlineExists <- File.exists path
+                          if outlineExists
+                            then
+                              do  bytes <- File.readUtf8 path
+                                  case D.fromByteString constraintsDecoder bytes of
+                                    Right bare ->
+                                      case connection of
+                                        Online _ -> finish preparedSchelm depOrigins bare
+                                        Offline ->
+                                          do  srcExists <- Dir.doesDirectoryExist (home </> "src")
+                                              if srcExists then finish preparedSchelm depOrigins bare else back state
+                                    Left _ ->
+                                      do  File.remove path
+                                          err (Exit.SolverBadCacheData pkg vsn)
+                            else
+                              case connection of
+                                Offline -> back state
+                                Online manager ->
+                                  do  let url = Website.metadata pkg vsn "elm.json"
+                                      result <- Http.get manager url [] id (return . Right)
+                                                  & Lamdera.alternativeImplementationPassthrough (Lamdera.Extensions.elmJsonOverride pkg vsn)
+                                      case result of
+                                        Left httpProblem -> err (Exit.SolverBadHttp pkg vsn httpProblem)
+                                        Right body ->
+                                          case D.fromByteString constraintsDecoder body of
+                                            Right bare ->
+                                              do  Dir.createDirectoryIfMissing True home
+                                                  File.writeUtf8 path body
+                                                  finish preparedSchelm depOrigins bare
+                                            Left _ -> err (Exit.SolverBadHttpData pkg vsn url)
         case Map.lookup key cDict of
           Just cs ->
             ok state cs back
 
           Nothing ->
-            do  let toNewState cs = State cache connection registry (Map.insert key cs cDict)
-                let home = Stuff.package cache pkg vsn
-                let path = home </> "elm.json"
-                outlineExists <- File.exists path
-                if outlineExists
-                  then
-                    do  bytes <- File.readUtf8 path
-                        case D.fromByteString constraintsDecoder bytes of
-                          Right cs ->
-                            case connection of
-                              Online _ ->
-                                ok (toNewState cs) cs back
-
-                              Offline ->
-                                do  srcExists <- Dir.doesDirectoryExist (Stuff.package cache pkg vsn </> "src")
-                                    if srcExists
-                                      then ok (toNewState cs) cs back
-                                      else back state
-
-                          Left  _  ->
-                            do  File.remove path
-                                err (Exit.SolverBadCacheData pkg vsn)
-                  else
-                    case connection of
-                      Offline ->
-                        back state
-
-                      Online manager ->
-                        do  let url = Website.metadata pkg vsn "elm.json"
-                            result <- Http.get manager url [] id (return . Right)
-                                        & Lamdera.alternativeImplementationPassthrough (Lamdera.Extensions.elmJsonOverride pkg vsn)
-                            case result of
-                              Left httpProblem ->
-                                err (Exit.SolverBadHttp pkg vsn httpProblem)
-
-                              Right body ->
-                                case D.fromByteString constraintsDecoder body of
-                                  Right cs ->
-                                    do  Dir.createDirectoryIfMissing True home
-                                        File.writeUtf8 path body
-                                        ok (toNewState cs) cs back
-
-                                  Left _ ->
-                                    err (Exit.SolverBadHttpData pkg vsn url)
+            do  prepared <-
+                  case Map.findWithDefault Schelm.Official pkg origins of
+                    Schelm.Official -> Schelm.prepareOfficial home >> return (Right schelm)
+                    Schelm.Git source -> fmap (fmap fst) (Schelm.prepareGit schelm home pkg vsn source)
+                case prepared of
+                  Left problem -> err (Exit.SolverSchelmProblem problem)
+                  Right preparedSchelm -> load preparedSchelm
 
 
 constraintsDecoder :: D.Decoder () Constraints
@@ -339,7 +397,7 @@ constraintsDecoder =
   do  outline <- D.mapError (const ()) Outline.decoder
       case outline of
         Outline.Pkg (Outline.PkgOutline _ _ _ _ _ deps _ elmConstraint) ->
-          return (Constraints elmConstraint deps)
+          return (Constraints elmConstraint deps Map.empty)
 
         Outline.App _ ->
           D.failure ()

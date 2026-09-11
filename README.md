@@ -38,7 +38,7 @@ The Lamdera compiler CLI has the following differences from the official Elm com
 | `init`                  | ✅           | ⚠️               | Initialises an Elm project setup for Lamdera |
 | `reactor`               | ✅           | ⚠️               | Renamed to `live`, full stack, live/hot reload, with [interactive UI source maps](/releases/v1-1-0) |
 | `make`                  | ✅           | ✅ ➕            | Adds:<br/>`--optimize-legible` non-obfuscated build<br/>`--no-wire` skips [Lamdera Wire](https://dashboard.lamdera.app/docs/wire) gen |
-| `install`               | ✅           | ✅ ➕            | Adds `lamdera/*` packages |
+| `install`               | ✅           | ✅ ➕            | Adds `lamdera/*` packages and optional [Schelm Git packages](docs/schelm-packages.md) |
 | `diff` `bump` `publish` | ✅           | ❌ Deactivated   | All Lamdera projects use Elm packages from the Elm ecosystem, so continue to use `elm` for this. |
 | `format`                | ❌           | ✅               | Embeds [elm-format](https://github.com/avh4/elm-format) |
 

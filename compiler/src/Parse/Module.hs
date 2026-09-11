@@ -61,6 +61,13 @@ isKernel projectType =
     Application -> False
 
 
+allowsInfixes :: ProjectType -> Bool
+allowsInfixes projectType =
+  case projectType of
+    Package pkg -> Pkg.isOfficialKernel pkg
+    Application -> False
+
+
 
 -- MODULE
 
@@ -78,7 +85,7 @@ chompModule :: ProjectType -> Parser E.Module Module
 chompModule projectType =
   do  header <- chompHeader
       imports <- chompImports (if isCore projectType then [] else Imports.defaults)
-      infixes <- if isKernel projectType then chompInfixes [] else return []
+      infixes <- if allowsInfixes projectType then chompInfixes [] else return []
       decls <- specialize E.Declarations $ chompDecls []
       return (Module header imports infixes decls)
 

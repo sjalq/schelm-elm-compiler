@@ -912,6 +912,7 @@ data Solver
   = SolverBadCacheData Pkg.Name V.Version
   | SolverBadHttpData Pkg.Name V.Version String
   | SolverBadHttp Pkg.Name V.Version Http.Error
+  | SolverSchelmProblem String
 
 
 toSolverReport :: Solver -> Help.Report
@@ -948,6 +949,11 @@ toSolverReport problem =
       toHttpErrorReport "PROBLEM SOLVING PACKAGE CONSTRAINTS" httpError $
         "I need the elm.json of " ++ Pkg.toChars pkg ++ " " ++ V.toChars vsn
         ++ " to help me search for a set of compatible packages"
+
+    SolverSchelmProblem problem ->
+      Help.report "PROBLEM RESOLVING GIT PACKAGE" (Just "schelm.json")
+        "I could not resolve the package sources declared by this project."
+        [ D.reflow problem ]
 
 
 
@@ -1306,6 +1312,7 @@ data Details
       String -- @LAMDERA addition: reason
   | DetailsBadOutline Outline
   | DetailsCannotGetRegistry RegistryProblem
+  | DetailsKernelModuleCollision String [Pkg.Name]
   | DetailsBadDeps FilePath [DetailsBadDep]
 
 
@@ -1400,6 +1407,13 @@ toDetailsReport details =
     DetailsCannotGetRegistry problem ->
       toRegistryProblemReport "PROBLEM LOADING PACKAGE LIST" problem $
         "I need the list of published packages to verify your dependencies"
+
+    DetailsKernelModuleCollision name packages ->
+      Help.report "DUPLICATE KERNEL MODULE" Nothing
+        ("More than one dependency defines the Elm.Kernel." ++ name ++ " JavaScript module.")
+        [ D.reflow "Kernel JavaScript names are global, so every kernel module in a dependency graph must have a unique name."
+        , D.indent 4 $ D.dullyellow $ D.vcat $ map D.fromPackage packages
+        ]
 
     DetailsBadDeps cacheDir deps ->
       case List.sortOn toBadDepRank deps of
