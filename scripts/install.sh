@@ -28,6 +28,11 @@ case $(uname -m) in
   *) printf 'unsupported architecture: %s\n' "$(uname -m)" >&2; exit 1 ;;
 esac
 
+if [[ $os == macos && $arch != arm64 ]]; then
+  printf 'Schelm supports macOS on Apple Silicon.\n' >&2
+  exit 1
+fi
+
 for command_name in curl tar; do
   command -v "$command_name" >/dev/null 2>&1 || {
     printf '%s is required.\n' "$command_name" >&2

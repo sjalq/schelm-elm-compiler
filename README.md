@@ -41,7 +41,7 @@ See [SCHELM.md](SCHELM.md) for identity and maintenance, and
 
 ## Install and verify
 
-Install the current prerelease on Linux or macOS:
+Install the current prerelease on Linux or Apple Silicon macOS:
 
 ```sh
 curl --proto '=https' --tlsv1.2 -fsSL https://raw.githubusercontent.com/sjalq/schelm-elm-compiler/main/scripts/install.sh | bash
