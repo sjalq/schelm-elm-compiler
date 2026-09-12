@@ -35,6 +35,8 @@ jobs:
           restore-keys: stack-${{ runner.os }}-
       - name: Check public surface
         run: ./scripts/check-public.sh
+      - name: Install build tools
+        run: npm install --global esbuild@0.25.9
       - name: Build Schelm
         run: ./scripts/build-schelm.sh
       - name: Set up inherited test directories

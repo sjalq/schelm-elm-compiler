@@ -17,8 +17,11 @@ in [LICENSE](LICENSE) and [NOTICE](NOTICE).
 
 ## Build and use
 
+Building requires Stack, Node.js with npm, and `esbuild@0.25.9`.
+
 ```sh
 git submodule update --init --recursive
+npm install --global esbuild@0.25.9
 ./scripts/build-schelm.sh
 dist/schelm/bin/schelm --version-full
 ```
