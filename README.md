@@ -41,6 +41,22 @@ See [SCHELM.md](SCHELM.md) for identity and maintenance, and
 
 ## Install and verify
 
+Install the current prerelease on Linux or macOS:
+
+```sh
+curl --proto '=https' --tlsv1.2 -fsSL https://raw.githubusercontent.com/sjalq/schelm-elm-compiler/main/scripts/install.sh | bash
+```
+
+Install it from PowerShell on 64-bit Windows:
+
+```powershell
+irm https://raw.githubusercontent.com/sjalq/schelm-elm-compiler/main/scripts/install.ps1 | iex
+```
+
+The installers download the matching release archive, verify its SHA-256
+checksum, and install `schelm` on your user PATH. Set `SCHELM_VERSION` and
+`SCHELM_INSTALL_DIR` to select another release or location.
+
 Release tags have the form `v0.1.0-alpha.1`. Download the archive for your OS
 and architecture plus its matching `.sha256` file from the GitHub release.
 Verify it with `sha256sum --check FILE.sha256` on Linux or

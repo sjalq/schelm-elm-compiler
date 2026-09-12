@@ -22,6 +22,8 @@ Extra-source-files:
     SECURITY.md
     docs/schelm-packages.md
     docs/release-checklist.md
+    scripts/install.sh
+    scripts/install.ps1
     scripts/verify-release-archive.sh
     tests/integration/README.md
     tests/integration/run.sh
