@@ -1,6 +1,7 @@
 [submodule "vendor/elm-format"]
 	path = vendor/elm-format
 	url = https://github.com/lamdera/elm-format.git
+	ignore = untracked
 [submodule "extra/package-replacements/elm/virtual-dom"]
 	path = extra/package-replacements/elm/virtual-dom
 	url = https://github.com/lamdera/elm-virtual-dom.git
