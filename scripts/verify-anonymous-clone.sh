@@ -32,5 +32,5 @@ export GIT_CONFIG_VALUE_0=
 git clone --quiet --no-checkout "$url" "$temp/repository"
 git -C "$temp/repository" checkout --quiet "$ref"
 git -C "$temp/repository" submodule update --init --recursive
-git -C "$temp/repository" submodule status --recursive | grep -Eq '^[ +]'
+git -C "$temp/repository" submodule status --recursive | grep -E '^[ +]' >/dev/null
 printf 'Anonymous recursive clone verified at %s.\n' "$ref"
