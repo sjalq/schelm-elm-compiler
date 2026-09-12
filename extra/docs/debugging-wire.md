@@ -17,7 +17,7 @@ Assuming you have [`lamdera/runtime`](https://github.com/lamdera/runtime) cloned
 
 ```
 mkdir -p ~/lamdera/overrides/packages/elm/bytes
-git clone git@github.com:lamdera/elm-bytes.git ~/lamdera/overrides/packages/elm/bytes/1.0.8
+git clone https://github.com/lamdera/elm-bytes.git ~/lamdera/overrides/packages/elm/bytes/1.0.8
 
 ```
 

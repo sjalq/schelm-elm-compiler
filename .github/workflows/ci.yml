@@ -1,0 +1,61 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: haskell-actions/setup@bda9c527d4136f7759733016190c34a24c84f4f4 # v2
+        with:
+          enable-stack: true
+          stack-no-global: true
+      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: |
+            ~/.stack
+            .stack-work
+          key: stack-${{ runner.os }}-${{ hashFiles('stack.yaml.lock', 'elm.cabal') }}
+          restore-keys: stack-${{ runner.os }}-
+      - name: Check public surface
+        run: ./scripts/check-public.sh
+      - name: Build Schelm
+        run: ./scripts/build-schelm.sh
+      - name: Set up inherited test directories
+        run: mkdir -p "$HOME/elm-home-elmx-test" "$HOME/lamdera/overrides/packages"
+      - name: Run Haskell tests
+        run: stack test elm:lamdera-tests
+      - name: Install official Elm 0.19.1
+        run: npm install --global elm@0.19.1-6
+      - name: Run Schelm package integration tests
+        env:
+          SCHELM_BIN: ${{ github.workspace }}/dist/schelm/bin/schelm
+          ELM_BIN: elm
+        run: ./tests/integration/run.sh
+
+  anonymous-clone:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Verify public recursive clone
+        run: ./scripts/verify-anonymous-clone.sh "https://github.com/${GITHUB_REPOSITORY}.git" "$GITHUB_SHA"

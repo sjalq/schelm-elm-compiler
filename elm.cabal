@@ -7,8 +7,9 @@ Synopsis:
     The Schelm compiler, based on Lamdera and compatible with Elm.
 
 Description:
-    This includes commands like `schelm make`, `schelm repl`, and Git-native
-    packages with package-scoped kernel extensions.
+    An independent downstream of Lamdera 1.4.1 and Elm 0.19.1. Ordinary Elm
+    projects remain compatible with Elm 0.19.1. Optional Git-native packages
+    use immutable pins and may contain trusted kernel or effect-manager code.
 
 Homepage: https://github.com/sjalq/schelm-elm-compiler
 
@@ -17,11 +18,16 @@ License-file: LICENSE
 Extra-source-files:
     NOTICE
     SCHELM.md
+    CONTRIBUTING.md
+    SECURITY.md
     docs/schelm-packages.md
+    docs/release-checklist.md
+    tests/integration/README.md
+    tests/integration/run.sh
 
 Author:     Evan Czaplicki, Mario Rogic, and Schelm contributors
 Maintainer: sjalq
-Copyright:  Copyright (c) 2012-present, Evan Czaplicki; Copyright (c) 2020-present, Mario Rogic
+Copyright:  Copyright (c) 2012-present, Evan Czaplicki; Copyright (c) 2020-present, Mario Rogic; Copyright (c) 2026-present, Schelm contributors
 
 Category: Compiler, Language
 

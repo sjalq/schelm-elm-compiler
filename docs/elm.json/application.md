@@ -1,5 +1,9 @@
 # `elm.json` for applications
 
+Schelm compatibility note: an ordinary application keeps this standard
+`elm.json` and compiles with official Elm 0.19.1. Git dependency origins and
+immutable pins live separately in `schelm.json`; using them requires Schelm.
+
 This is a decent baseline for pretty much any applications made with Elm. You will need these dependencies or more.
 
 ```json

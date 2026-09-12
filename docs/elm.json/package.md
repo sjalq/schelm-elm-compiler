@@ -1,5 +1,10 @@
 # `elm.json` for packages
 
+Schelm compatibility note: this is the standard Elm package manifest. An
+extension-free package remains accepted by official Elm 0.19.1. Schelm's
+optional Git publication and trusted kernel/effect-manager extensions are in
+`docs/schelm-packages.md` and require Schelm when used.
+
 This is roughly `elm.json` for the `elm/json` package:
 
 ```json

@@ -1,0 +1,105 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build ${{ matrix.platform }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: linux-x86_64
+            runner: ubuntu-24.04
+          - platform: linux-arm64
+            runner: ubuntu-24.04-arm
+          - platform: macos-x86_64
+            runner: macos-15-intel
+          - platform: macos-arm64
+            runner: macos-14
+          - platform: windows-x86_64
+            runner: windows-2025
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 75
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: haskell-actions/setup@bda9c527d4136f7759733016190c34a24c84f4f4 # v2
+        with:
+          enable-stack: true
+          stack-no-global: true
+      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: |
+            ~/.stack
+            .stack-work
+          key: release-${{ matrix.platform }}-${{ hashFiles('stack.yaml.lock', 'elm.cabal') }}
+          restore-keys: release-${{ matrix.platform }}-
+      - name: Validate tag and source version
+        run: |
+          version=${GITHUB_REF_NAME#v}
+          [[ "$GITHUB_REF_NAME" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]
+          test "$(sed -n 's/^short = "\([^"]*\)"/\1/p' extra/Schelm/Version.hs)" = "$version"
+      - name: Build and package
+        run: ./scripts/release-schelm.sh "${GITHUB_REF_NAME#v}" "${{ matrix.platform }}"
+      - name: Verify exact identity
+        run: |
+          exe=dist/schelm/bin/schelm
+          test "${{ runner.os }}" != Windows || exe=$exe.exe
+          test "$("$exe" --version)" = "${GITHUB_REF_NAME#v}"
+          test "$("$exe" --elm-version)" = "0.19.1"
+          "$exe" --version-full | grep -F "schelm-${GITHUB_REF_NAME#v}-"
+          "$exe" --version-full | grep -F '(Lamdera 1.4.1)'
+          "$exe" --version-full | grep -F '(upstream-lamdera 63f640f0d1ea916ba92c9440bdfd21a165247e60)'
+          test -f dist/schelm/LICENSE
+          test -f dist/schelm/NOTICE
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: schelm-${{ matrix.platform }}
+          path: |
+            dist/schelm-*.tar.gz
+            dist/schelm-*.tar.gz.sha256
+            dist/schelm-*.zip
+            dist/schelm-*.zip.sha256
+          if-no-files-found: error
+
+  publish:
+    needs: build
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+    steps:
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          pattern: schelm-*
+          path: artifacts
+          merge-multiple: true
+      - name: Consolidate checksums
+        run: |
+          cd artifacts
+          cat ./*.sha256 > SHA256SUMS
+          sha256sum --check SHA256SUMS
+      - uses: actions/attest-build-provenance@96b4a1ef7235a096b17240c259729fdd70c83d45 # v2
+        with:
+          subject-path: |
+            artifacts/*.tar.gz
+            artifacts/*.zip
+            artifacts/SHA256SUMS
+      - name: Create GitHub release after every build succeeds
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: gh release create "$GITHUB_REF_NAME" artifacts/* --verify-tag --generate-notes --prerelease

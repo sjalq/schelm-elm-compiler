@@ -17,7 +17,7 @@ import qualified Lamdera.Version as Lamdera
 
 
 short :: String
-short = "0.1.0-dev"
+short = "0.1.0-alpha.1"
 
 
 elm :: String

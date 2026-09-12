@@ -1,0 +1,14 @@
+version: 2
+# Dependabot has no Cabal or Stack ecosystem. stack.yaml.lock remains reviewed
+# and updated through normal pull requests.
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 5
+  - package-ecosystem: gitsubmodule
+    directory: /
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 5

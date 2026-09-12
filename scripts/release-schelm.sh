@@ -1,12 +1,13 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-if [[ $# -ne 1 ]]; then
-  printf 'usage: %s VERSION\n' "$0" >&2
+if [[ $# -lt 1 || $# -gt 2 ]]; then
+  printf 'usage: %s VERSION [PLATFORM]\n' "$0" >&2
   exit 64
 fi
 
 version=$1
+platform=${2:-}
 root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 cd "$root"
 
@@ -17,29 +18,33 @@ fi
 
 ./scripts/build-schelm.sh
 
-actual=$(dist/schelm/bin/schelm --version)
+exe=dist/schelm/bin/schelm
+extension=tar.gz
+if [[ ${OS:-} == Windows_NT ]]; then
+  exe=$exe.exe
+  extension=zip
+fi
+
+actual=$("$exe" --version)
 if [[ $actual != "$version" ]]; then
   printf 'requested version %s, compiler reports %s\n' "$version" "$actual" >&2
   exit 1
 fi
 
-platform=$(uname -s | tr '[:upper:]' '[:lower:]')-$(uname -m)
-archive="dist/schelm-${version}-${platform}.tar.gz"
-tar -C dist -czf "$archive" schelm
+if [[ -z $platform ]]; then
+  platform=$(uname -s | tr '[:upper:]' '[:lower:]')-$(uname -m)
+fi
+archive="dist/schelm-${version}-${platform}.${extension}"
+if [[ $extension == zip ]]; then
+  (cd dist && 7z a -tzip "$(basename "$archive")" schelm >/dev/null)
+else
+  tar -C dist -czf "$archive" schelm
+fi
 
 if command -v sha256sum >/dev/null 2>&1; then
-  sha256sum "$archive" > "$archive.sha256"
+  (cd "$(dirname "$archive")" && sha256sum "$(basename "$archive")") > "$archive.sha256"
 else
-  shasum -a 256 "$archive" > "$archive.sha256"
+  (cd "$(dirname "$archive")" && shasum -a 256 "$(basename "$archive")") > "$archive.sha256"
 fi
 
-if [[ -n ${SCHELM_MINISIGN_SECRET_KEY:-} ]]; then
-  minisign -S -s "$SCHELM_MINISIGN_SECRET_KEY" -m "$archive"
-elif [[ -n ${SCHELM_GPG_KEY:-} ]]; then
-  gpg --batch --yes --local-user "$SCHELM_GPG_KEY" --armor --detach-sign "$archive"
-else
-  printf 'set SCHELM_MINISIGN_SECRET_KEY or SCHELM_GPG_KEY to sign this release\n' >&2
-  exit 1
-fi
-
-printf 'Created private release artifacts under %s/dist\n' "$root"
+printf 'Created release archive and checksum under %s/dist\n' "$root"

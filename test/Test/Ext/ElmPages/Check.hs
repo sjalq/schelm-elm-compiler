@@ -29,7 +29,7 @@ suite = tests $
           elmPagesExists <- Dir.doesDirectoryExist "elm-pages"
           if not elmPagesExists
             then do
-              bash $ "git clone git@github.com:dillonkearns/elm-pages.git elm-pages"
+              bash $ "git clone https://github.com/dillonkearns/elm-pages.git elm-pages"
               bash $ "cd elm-pages && git checkout f4c50f9310348d4943cff2960892b65dc8081900"
             else pure ""
           bash $ "npm i --legacy-peer-deps"

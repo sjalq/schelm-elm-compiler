@@ -1,3 +1,10 @@
+# Historical Elm installers
+
+This directory is inherited from Elm and is not a supported Schelm installer.
+It contains old Elm names, versions, URLs, and platform assumptions. Install
+Schelm from a GitHub release archive or build with `scripts/build-schelm.sh`.
+The remaining content documents the historical upstream installers.
+
 # Installing Elm
 
 The normal path is to work through [the guide](https://guide.elm-lang.org/) until you need to install, but you can skip to installation directly by going [here](https://guide.elm-lang.org/install/terminal.html).

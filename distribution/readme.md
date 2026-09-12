@@ -1,3 +1,8 @@
+# Historical upstream compiler distribution
+
+These inherited Lamdera scripts are retained as upstream source material. They
+build or upload Lamdera artifacts and are not used or supported for Schelm.
+Use `scripts/build-schelm.sh` or the tag-driven GitHub release workflow.
 
 ## Supported architectures
 

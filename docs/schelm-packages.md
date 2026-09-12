@@ -47,7 +47,8 @@ git tag 1.2.3
 git push origin HEAD 1.2.3
 ```
 
-The tag is the published release. There is no required Schelm registry or upload.
+The tag is the published release. Schelm deliberately has no package registry,
+package server, altered `elm.json` schema, or mandatory lockfile.
 Moving a published tag is rejected for projects that already resolved it, including
 on a fresh machine, because the commit and content hash no longer match.
 
@@ -58,6 +59,12 @@ Package projects may include `src/Elm/Kernel/*.js` and effect manager modules.
 Applications remain unable to include kernel code. Custom infix declarations stay
 restricted to the official core package authors.
 
-Packages without `schelm.json` remain publishable and compilable with Elm 0.19.1.
+Kernel JavaScript and effect managers are privileged code. They bypass Elm's
+normal package safety boundary and run with the generated application, so users
+must review and trust their source and immutable pins. Rejecting submodules and
+symbolic links does not make privileged code safe.
+
+Extension-free packages without `schelm.json`, kernel JavaScript, or custom
+effect managers remain publishable and compilable with official Elm 0.19.1.
 Elm registry packages and Git packages share the same solver, cache layout, build,
 and import behavior.

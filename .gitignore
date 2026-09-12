@@ -1,5 +1,7 @@
 elm-stuff
 /dist
+/artifacts
+/.release
 cabal-dev
 .cabal-sandbox/
 cabal.sandbox.config
@@ -13,7 +15,25 @@ travis.log
 extra/node_modules
 extra/.cache
 .stack-work
+.cabal-store
+cabal.project.local
+*.eventlog
+*.prof
+*.hp
 
 # @TESTS
 elm-home
+tests/integration/.cache
+tests/integration/tmp
 
+# Local credentials and signing material
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+*.asc
+*.sig
+*.minisig
