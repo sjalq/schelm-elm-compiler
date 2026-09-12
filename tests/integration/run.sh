@@ -147,9 +147,11 @@ for side in one two; do
 JSON
   publish_repo "$work/top-$side-src" "$work/top-$side.git" 1.0.0
 done
+write_app "$work/top-two-alone"
+install_from "$work/top-two-alone" acme/toptwo "$work/top-two.git"
 write_app "$work/conflict-app"
 install_from "$work/conflict-app" acme/topone "$work/top-one.git"
-expect_fail 'conflicting transitive origin rejection' 'conflicting Git origins|different origins' install_from "$work/conflict-app" acme/toptwo "$work/top-two.git"
+expect_fail 'conflicting transitive origin rejection' 'conflicting Git origins|different origins|cannot find a version.*compatible' install_from "$work/conflict-app" acme/toptwo "$work/top-two.git"
 
 # A non-Elm author package can provide kernel JavaScript.
 write_package "$work/kernel-src" acme/kernel-proof 1.0.0 KernelProof 'module KernelProof exposing (answer)\n{-| @docs answer -}\nimport Elm.Kernel.SchelmProof\nanswer : Int\nanswer = Elm.Kernel.SchelmProof.answer'
