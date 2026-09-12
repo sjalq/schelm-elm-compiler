@@ -39,11 +39,14 @@ See [SCHELM.md](SCHELM.md) for identity and maintenance, and
 ## Install and verify
 
 Release tags have the form `v0.1.0-alpha.1`. Download the archive for your OS
-and architecture plus `SHA256SUMS` from the matching GitHub release, then run
-`sha256sum --check SHA256SUMS` in the download directory. GitHub also publishes
-a keyless build-provenance attestation for each archive. Extract the archive,
-place `schelm` or `schelm.exe` on `PATH`, and run `schelm --version-full`.
-With GitHub CLI installed, verify provenance with
+and architecture plus its matching `.sha256` file from the GitHub release.
+Verify it with `sha256sum --check FILE.sha256` on Linux or
+`shasum -a 256 --check FILE.sha256` on macOS. On Windows, compare
+`(Get-FileHash FILE.zip -Algorithm SHA256).Hash` with the first field in the
+`.sha256` file. `SHA256SUMS` is available when verifying every archive together.
+GitHub also publishes a keyless build-provenance attestation for each archive.
+Extract the archive, place `schelm` or `schelm.exe` on `PATH`, and run
+`schelm --version-full`. With GitHub CLI installed, verify provenance with
 `gh attestation verify ARCHIVE --repo sjalq/schelm-elm-compiler`.
 
 The inherited `installers/`, `distribution/`, and npm installer sources are

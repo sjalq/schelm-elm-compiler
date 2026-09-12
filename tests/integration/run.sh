@@ -162,6 +162,14 @@ JS
 publish_repo "$work/kernel-src" "$work/kernel.git" 1.0.0
 write_app "$work/kernel-app"
 install_from "$work/kernel-app" acme/kernel-proof "$work/kernel.git"
+cat >"$work/kernel-app/src/Main.elm" <<'ELM'
+module Main exposing (main)
+import KernelProof
+import Platform
+main : Program () Int Never
+main = Platform.worker { init = \_ -> (KernelProof.answer, Cmd.none), update = \_ model -> (model, Cmd.none), subscriptions = \_ -> Sub.none }
+ELM
+(cd "$work/kernel-app" && "$SCHELM_BIN" make src/Main.elm --output=app.js)
 pass 'arbitrary-author kernel package'
 
 # The same kernel path in an application remains forbidden.
@@ -185,6 +193,14 @@ rm -f "$work/effect-src/elm.json.bak"
 publish_repo "$work/effect-src" "$work/effect.git" 1.0.0
 write_app "$work/effect-app"
 install_from "$work/effect-app" acme/effect-proof "$work/effect.git"
+cat >"$work/effect-app/src/Main.elm" <<'ELM'
+module Main exposing (main)
+import Platform
+import Time
+main : Program () () ()
+main = Platform.worker { init = \_ -> ((), Cmd.none), update = \_ model -> (model, Cmd.none), subscriptions = \_ -> Time.every 1000 (\_ -> ()) }
+ELM
+(cd "$work/effect-app" && "$SCHELM_BIN" make src/Main.elm --output=app.js)
 pass 'arbitrary-author effect-manager package'
 
 printf 'All Schelm integration tests passed.\n'

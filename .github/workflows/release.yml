@@ -21,11 +21,11 @@ jobs:
           - platform: macos-x86_64
             runner: macos-15-intel
           - platform: macos-arm64
-            runner: macos-14
+            runner: macos-15
           - platform: windows-x86_64
             runner: windows-2025
     runs-on: ${{ matrix.runner }}
-    timeout-minutes: 75
+    timeout-minutes: 120
     defaults:
       run:
         shell: bash
@@ -50,7 +50,12 @@ jobs:
         run: |
           version=${GITHUB_REF_NAME#v}
           [[ "$GITHUB_REF_NAME" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]
+          test "$(git cat-file -t "$GITHUB_REF_NAME")" = tag
+          git merge-base --is-ancestor "$GITHUB_REF_NAME^{commit}" origin/main
           test "$(sed -n 's/^short = "\([^"]*\)"/\1/p' extra/Schelm/Version.hs)" = "$version"
+      - name: Check public surface
+        if: matrix.platform == 'linux-x86_64'
+        run: ./scripts/check-public.sh
       - name: Build and package
         run: ./scripts/release-schelm.sh "${GITHUB_REF_NAME#v}" "${{ matrix.platform }}"
       - name: Verify exact identity
@@ -64,6 +69,23 @@ jobs:
           "$exe" --version-full | grep -F '(upstream-lamdera 63f640f0d1ea916ba92c9440bdfd21a165247e60)'
           test -f dist/schelm/LICENSE
           test -f dist/schelm/NOTICE
+      - name: Verify packaged artifact compiles on target
+        run: ./scripts/verify-release-archive.sh "${GITHUB_REF_NAME#v}" "${{ matrix.platform }}"
+      - name: Set up inherited test directories
+        if: matrix.platform == 'linux-x86_64'
+        run: mkdir -p "$HOME/elm-home-elmx-test" "$HOME/lamdera/overrides/packages"
+      - name: Run Haskell tests for release source
+        if: matrix.platform == 'linux-x86_64'
+        run: stack test elm:lamdera-tests
+      - name: Install official Elm 0.19.1
+        if: matrix.platform == 'linux-x86_64'
+        run: npm install --global elm@0.19.1-6
+      - name: Run package integration tests for release binary
+        if: matrix.platform == 'linux-x86_64'
+        env:
+          SCHELM_BIN: ${{ github.workspace }}/dist/schelm/bin/schelm
+          ELM_BIN: elm
+        run: ./tests/integration/run.sh
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: schelm-${{ matrix.platform }}
