@@ -10,15 +10,16 @@ if ! command -v esbuild >/dev/null 2>&1; then
 fi
 
 exe=schelm
-stack_args=()
 if [[ ${OS:-} == Windows_NT ]]; then
   exe=schelm.exe
-  stack_args+=(--ghc-options '-optl"-Wl,-Bstatic,-lstdc++,-lgcc_s,-lwinpthread,-Bdynamic"')
 fi
 mkdir -p dist/schelm/bin
-stack install elm:exe:schelm --local-bin-path "$root/dist/schelm/bin" "${stack_args[@]}"
 if [[ ${OS:-} == Windows_NT ]]; then
+  stack install elm:exe:schelm --local-bin-path "$root/dist/schelm/bin" \
+    --ghc-options '-optl"-Wl,-Bstatic,-lstdc++,-lgcc_s,-lwinpthread,-Bdynamic"'
   cp distribution/dlls/* dist/schelm/bin/
+else
+  stack install elm:exe:schelm --local-bin-path "$root/dist/schelm/bin"
 fi
 cp LICENSE NOTICE dist/schelm/
 
