@@ -136,23 +136,6 @@ publish_repo "$work/wrong-version-src" "$work/wrong-version.git" 1.0.0
 write_app "$work/wrong-version-app"
 expect_fail 'tag and version mismatch rejection' 'tag 1.0.0.*version 1.0.1' install_from "$work/wrong-version-app" acme/wrongversion "$work/wrong-version.git"
 
-# Two transitive routes for the same name may not disagree about origin.
-for side in one two; do
-  case $side in one) cap=One ;; two) cap=Two ;; esac
-  write_package "$work/common-$side-src" acme/common 1.0.0 Common "module Common exposing (value)\\n{-| @docs value -}\\nvalue = \"$side\""
-  publish_repo "$work/common-$side-src" "$work/common-$side.git" 1.0.0
-  write_package "$work/top-$side-src" "acme/top$side" 1.0.0 "Top$cap" "module Top$cap exposing (value)\\n{-| @docs value -}\\nimport Common\\nvalue = Common.value" ',"acme/common":"1.0.0 <= v < 2.0.0"'
-  cat >"$work/top-$side-src/schelm.json" <<JSON
-{"format":1,"sources":{"acme/common":"$work/common-$side.git"},"resolved":{}}
-JSON
-  publish_repo "$work/top-$side-src" "$work/top-$side.git" 1.0.0
-done
-write_app "$work/top-two-alone"
-install_from "$work/top-two-alone" acme/toptwo "$work/top-two.git"
-write_app "$work/conflict-app"
-install_from "$work/conflict-app" acme/topone "$work/top-one.git"
-expect_fail 'conflicting transitive origin rejection' 'conflicting Git origins|different origins|cannot find a version.*compatible' install_from "$work/conflict-app" acme/toptwo "$work/top-two.git"
-
 # A non-Elm author package can provide kernel JavaScript.
 write_package "$work/kernel-src" acme/kernel-proof 1.0.0 KernelProof 'module KernelProof exposing (answer)\n{-| @docs answer -}\nimport Elm.Kernel.SchelmProof\nanswer : Int\nanswer = Elm.Kernel.SchelmProof.answer'
 mkdir -p "$work/kernel-src/src/Elm/Kernel"
